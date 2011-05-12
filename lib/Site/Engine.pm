@@ -1,11 +1,12 @@
 package Site::Engine;
 use strict;
 use warnings;
+use Data::Dumper;
 use CGI qw( path_info request_method );
 use Site::Engine::Template;
 use Site::Engine::Session;
 use Exporter qw( import );
-our @EXPORT = qw( header get template start_site param cookie );
+our @EXPORT = qw( header get post template start_site param session dump_env redirect );
 our $VERSION = '0.01';
 
 # Private
@@ -16,7 +17,7 @@ my @routes;
 my $config;
 my $path_info;
 my $request_method;
-my $cookie;
+my $session;
 
 # Public 
 sub header ($;$) {
@@ -34,12 +35,16 @@ sub param (;$) {
     CGI::param(shift());
 }
 
-sub cookie (;$) {
-    CGI::cookie(shift());
-}
-
 sub session ($;$) {
-    Site::Engine::Session::session(@_);
+    my ($id,$ret) = Site::Engine::Session::session($session, @_);
+    if ($session ne $id) {
+        header "Set-Cookie" => CGI::cookie(
+                -name   =>"session",
+                -value  =>$id,
+                -expires=>"+".$config->{session_expires}."s"
+            );
+    }
+    $ret;
 }
 
 sub get ($$) {
@@ -47,15 +52,30 @@ sub get ($$) {
     push @routes, ['GET',$route, $sub];
 }
 
+sub post ($$) {
+    my ($route, $sub) = @_;
+    push @routes, ['POST',$route, $sub];
+}
+
 sub template ($$;$) {
     Site::Engine::Template::template(@_);
+}
+
+sub dump_env {
+    return Dumper(\$config, \%ENV);
+}
+
+sub redirect ($) {
+    header "Status" => 303;
+    header "Location" => shift();
+    "";
 }
 
 sub start_site ($) {
     $config = shift;
     $path_info = path_info();
     $request_method = request_method();
-    $cookie = CGI::cookie();
+    $session = CGI::cookie("session");
     %headers = ();
     $body = "";
 
@@ -91,7 +111,7 @@ sub start_site ($) {
             last;
         }
     }
-    if (!$body) {
+    if (!$body && !header("Status")) {
         $body = qq{
             <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
             <html><head>
