@@ -7,12 +7,12 @@ use Site::Engine::Template;
 use Site::Engine::Session;
 use Site::Engine::Database;
 use Exporter qw( import );
-our @EXPORT = qw( header get post template start_site param session dump_env redirect config prefix );
+our @EXPORT = qw( header get post template start_site param session dump_env redirect config prefix database to_dumper layout );
 our $VERSION = '0.01';
 
 # Private
 
-my (%headers, $body, @routes, $config, $path_info, $request_method, $session, $addr, $ua);
+my (%headers, $body, @routes, $config, $path_info, $request_method, $session, $addr, $ua, $layout);
 my $prefix = "";
 
 # Public 
@@ -31,34 +31,51 @@ sub param (;$) {
     CGI::param(shift());
 }
 
-sub session ($;$) {
-    my ($id,$ret) = Site::Engine::Session::session($session, $addr, @_);
-    if (! defined $session || $session ne $id) {
-        header "Set-Cookie" => CGI::cookie(
-                -name   =>"session",
-                -value  =>$id,
-                -expires=>"+".$config->{session_expires}."s"
-            );
+sub session (;$$) {
+    if (scalar @_ == 1 && !defined $_[0]) {
+        Site::Engine::Session::destroy_session($session, $addr);
+        $session = undef;
     }
-    $ret;
+    else {
+        my ($id,$ret) = Site::Engine::Session::session($session, $addr, @_);
+        if (! defined $session || $session ne $id) {
+            header "Set-Cookie" => CGI::cookie(
+                    -name   =>"session",
+                    -value  =>$id,
+                    #-expires=>"+".$config->{session_expires}."s"
+                );
+        }
+        return $ret;
+    }
 }
 
 sub prefix ($) {
     $prefix = shift;
 }
 
+sub layout ($) {
+    $layout = shift;
+}
+
 sub get ($$) {
     my ($route, $sub) = @_;
-    push @routes, ['GET', $prefix, $route, $sub];
+    push @routes, ['GET', $prefix, $route, $sub, $layout];
 }
 
 sub post ($$) {
     my ($route, $sub) = @_;
-    push @routes, ['POST', $prefix, $route, $sub];
+    push @routes, ['POST', $prefix, $route, $sub, $layout];
 }
 
 sub template ($$;$) {
-    Site::Engine::Template::template(@_);
+    if (! exists $_[1]->{prefix} ) {
+        $_[1]->{prefix} = $prefix;
+    }
+    my $conf = (scalar @_ == 3)?pop(@_):{};
+    if (!exists $conf->{layout} && defined $layout) {
+        $conf->{layout} = $layout;
+    }
+    Site::Engine::Template::template(@_, $conf);
 }
 
 sub dump_env {
@@ -66,13 +83,23 @@ sub dump_env {
 }
 
 sub redirect ($) {
+    my $location = shift;
+    $location = $prefix.$location if ($location !~ m'^\w+://');
     header "Status" => 303;
-    header "Location" => shift();
+    header "Location" => $location;
     "";
 }
 
 sub config {
     $config
+}
+
+sub database {
+    dbh;
+}
+
+sub to_dumper {
+    Dumper(shift());
 }
 
 sub start_site ($) {
@@ -94,6 +121,8 @@ sub start_site ($) {
     foreach my $route (@routes) {
         if ($request_method eq $route->[0] && $path_info =~ /^$route->[1]$route->[2]$/ ) {
             my @matches = ($path_info =~ /^$route->[1]$route->[2]$/);
+            $prefix = $route->[1];
+            $layout = $route->[4];
             eval {
                 $body = $route->[3]->(@matches);
             };
@@ -160,7 +189,7 @@ doesn't provide support for modern PSGI-based WF like Dancer or Mojolicious
 
     # Configuration of site
     my %config = (
-        "htdocs" => "/path/to/templates/dir";
+        "templates" => "/path/to/templates/dir";
         "db" => {
            "type"   => "mysql",
            "db"     => "db"
