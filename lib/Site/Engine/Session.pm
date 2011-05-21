@@ -17,23 +17,23 @@ sub init ($) {
     $config->{session_expires} = $config->{session_expires} || 60*30;
 }
 
+sub destroy_session ($$) {
+    my $file = _session_file(@_);
+    if (defined $file) {
+        unlink $file;
+    }
+}
+
 sub session {
     my ($id, $addr, $field, $value) = @_;
     
-    # is addr sane
-    return if ( $addr !~ /^[\d\.]+$/ );
-  
-    my $file = $config->{"session_dir"} . "/" . $addr . "-";
+    my $file = _session_file($id, $addr);
 
-    if (   defined $id
-        && length $id == 16
-        && $id !~ /\W/
-        && -f $file . $id
-    ) {
+    if (defined $file) {
         my $time = time;
-        my $dt = $time - ( stat($file.$id) )[9];
+        my $dt = $time - ( stat($file) )[9];
         if ($dt < $config->{session_expires}) {
-            open my $fh, "<", $file.$id or die $!;
+            open my $fh, "<", $file or die $!;
             my %s;
             while (<$fh>) {
                 chomp();
@@ -43,7 +43,7 @@ sub session {
             close $fh;
             if (defined $value && defined $field && $field ne "id") {
                 $s{$field} = $value;
-                open my $fh, ">", $file.$id or die $!;
+                open my $fh, ">", $file or die $!;
                 foreach my $key (keys %s) {
                     print $fh $key."=".$s{$key}."\n";
                 }
@@ -56,13 +56,13 @@ sub session {
                 $s{id} = $id;
                 $value = \%s;
             }
-            utime $time, $time, $file.$id;
+            utime $time, $time, $file;
             return ($id,$value);
         }
         else {
 
             # delete old session file
-            unlink $file.$id;
+            unlink $file;
         }
     }
     $id = &_generate_session($addr, $field, $value);
@@ -71,8 +71,29 @@ sub session {
 
 # Private
 
+sub _session_file ($$) {
+    my ($id, $addr) = @_;
+
+    # is addr sane
+    return if ( $addr !~ /^[\d\.]+$/ );
+  
+    my $file = $config->{"session_dir"} . "/" . $addr . "-";
+    if (   defined $id
+        && length $id == 16
+        && $id !~ /\W/
+        && -f $file . $id
+    ) {
+        return $file.$id
+    }
+    return;
+}
+
 sub _generate_session ($$) {
     my ($addr, $field, $value) = @_;
+
+    # is addr sane
+    return if ( $addr !~ /^[\d\.]+$/ );
+
     my $id;
     foreach my $i (0..9) {
         $id = join '',
