@@ -15,7 +15,7 @@ sub init ($) {
 
 sub escape_html ($) {
     my $data = shift;
-    return "" if (!$data);
+    return "" if (! defined $data);
     $data =~ s/&/&amp;/g;
     $data =~ s/</&lt;/g;
     $data =~ s/>/&gt;/g;
@@ -27,7 +27,7 @@ sub escape_html ($) {
 sub template {
     my ($template, $vars, $conf) = @_;
     my $data = &_template($template, $vars);
-    my $layout = (defined $conf && exists $conf->{layout}) ?
+    my $layout = (exists $conf->{layout}) ?
             $conf->{layout} :
             $config->{layout} || "main";
     if (defined $layout) {
@@ -39,8 +39,8 @@ sub template {
 
 # Private
 
-sub _ifs ($$$$$$) {
-    my ($not, $var, $subvar, $value, $block, $vars) = @_;
+sub _ifs ($$$$$$$) {
+    my ($not, $var, $subvar, $value, $subvalue, $block, $vars) = @_;
     if (! exists $vars->{$var}) {
         return ($not)?$block:"";
     }
@@ -54,7 +54,22 @@ sub _ifs ($$$$$$) {
     elsif ( ref $vars->{$var} eq "ARRAY" && $subvar !~ /\D/ ) {
         $ret = $vars->{$var}->[$subvar];
     }
-    $ret = ($ret == $value) if ($value);
+    if (defined $ret) {
+        if( defined $value && $value !~ /\D/ ) {
+            $ret = ($ret !~ /\D/)? ($ret == $value) : 0;
+        }
+        elsif (defined $value && exists $vars->{$value}) {
+            if ( defined $subvalue ) {
+                $ret = (defined $vars->{$value}->{$subvalue})? ($ret == $vars->{$value}->{$subvalue}) : 0;
+            }
+            else {
+                $ret = (defined $vars->{$value})? ($ret == $vars->{$value}) : 0;
+            }
+        }
+        elsif (defined $value) {
+            $ret = 0;
+        }
+    }
     $ret = !$ret if ($not);
     ($ret)?$block:"";
 }
@@ -65,8 +80,25 @@ sub _set ($$$) {
     "";
 }
 
-sub _inc ($$) {
-    my ($template, $vars) = @_;
+sub _inc ($$$$) {
+    my ($template, $var, $subvar, $vars) = @_;
+    if (defined $var && exists $vars->{$var}) {
+        if (! defined $subvar) {
+            $template = $vars->{$var};
+        }
+        elsif (ref $vars->{$var} eq "HASH" && exists $vars->{$var}->{$subvar}) {
+            $template = $vars->{$var}->{$subvar};
+        }
+        elsif (ref $vars->{$var} eq "ARRAY" && $subvar !~ /\D/ ) {
+            $template = $vars->{$var}->[$subvar];
+        }
+        else {
+            return "";
+        }
+    }
+    elsif (!defined $template) {
+        return "";
+    }
     &_template($template, $vars);
 }
 
@@ -98,16 +130,16 @@ sub _var ($$$$) {
 
 {
     my $set_re = qr/\[%\sSET\s(\w+)\s?=\s?\"(.+?)\"\s%\]/;
-    my $inc_re = qr/\[%\sINCLUDE\s(\w+)\s%\]/;
-    my $ifs_re = qr/\[%\sIF\s(!\s?)?(\w+?)(?:\.(\w+?))?(?:==(\d+))?\s%\](.+?)\[%\sFI\s%\]/s;
+    my $inc_re = qr/\[%\sINCLUDE\s(?:\"(\w+)\")?(?:(\w+)(?:\.(\w+))?)?\s%\]/;
+    my $ifs_re = qr/\[%\sIF\s(!\s?)?(\w+?)(?:\.(\w+?))?(?:==(\w+)(?:\.(\w+))?)?\s%\](.+?)\[%\sFI\s%\]/s;
     my $var_re = qr/\[%\s(\w+?)(?:\.(\w+))?(?:\s\|\s(\w+))?\s%\]/;
     my $oth_re = qr/\[%.+?%\]/;
 
     sub _vars ($$) {
         my ($ref, $vars) = @_;
-        $$ref =~ s/$ifs_re/_ifs $1, $2, $3, $4, $5, $vars/eg;
+        $$ref =~ s/$ifs_re/_ifs $1, $2, $3, $4, $5, $6, $vars/eg;
         $$ref =~ s/$set_re/_set $1, $2, $vars/eg;
-        $$ref =~ s/$inc_re/_inc $1, $vars/eg;
+        $$ref =~ s/$inc_re/_inc $1, $2, $3, $vars/eg;
         $$ref =~ s/$var_re/_var $1, $2, $3, $vars/eg;
 
         # remove all other tags
@@ -134,7 +166,7 @@ sub _foreach ($$$$) {
 
     sub _template ($$) {
         my ($template, $vars) = @_;
-        my $file = $config->{htdocs} . "/" . $template . ".tt";
+        my $file = $config->{templates} . "/" . $template . ".tt";
         die "Template $template not found" if (! -f $file);
         local $/;
         open my $fh, "<", $file or die $!;
