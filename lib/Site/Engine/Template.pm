@@ -1,8 +1,9 @@
 package Site::Engine::Template;
 use strict;
 use warnings;
+use utf8;
 use Exporter qw( import );
-our @EXPORT = qw( escape_html );
+our @EXPORT = qw( escape_html clear_html );
 our $VERSION = '0.01';
 
 my $config;
@@ -22,6 +23,17 @@ sub escape_html ($) {
     $data =~ s/"/&quot;/g;
     $data =~ s/'/&#39;/g;
     return $data;
+}
+
+sub clear_html ($) {
+    my $data = shift;
+    return "" if (! defined $data);
+    $data =~ s/\r//g;
+    $data =~ s/\<(br|p)\s?\/?\>/\n/g;
+    $data =~ s/\<\/p\>/\n\n/g;
+    $data =~ s/&\w+;/ /g;
+    $data =~ s/\<.+?\>//sg;
+    escape_html $data;
 }
 
 sub template {
@@ -121,6 +133,20 @@ sub _var ($$$$) {
     }
     elsif ($attr eq "raw") {
         $ret = $ret;
+    }
+    elsif ($attr eq "clear") {
+        $ret = clear_html $ret;
+    }
+    elsif ($attr eq "clear_para") {
+        $ret = clear_html $ret;
+        $ret = substr $ret, 0, index($ret,"\n\n");
+    }
+    elsif ($attr =~ /^length(\d+)/) {
+        my $len = $1;
+        utf8::decode($ret);
+        $ret = substr($ret,0,$len)."..." if (length $ret > $len);
+        utf8::encode($ret);
+        $ret = escape_html $ret;
     }
     else {
         $ret = escape_html $ret;
