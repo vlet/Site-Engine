@@ -7,7 +7,7 @@ use Site::Engine::Template;
 use Site::Engine::Session;
 use Site::Engine::Database;
 use Exporter qw( import );
-our @EXPORT = qw( header get post template start_site param session dump_env redirect config prefix database to_dumper layout escape );
+our @EXPORT = qw( header get post template start_site param session dump_env redirect config prefix database to_dumper layout escape url_escape );
 our $VERSION = '0.01';
 
 # Private
@@ -33,6 +33,10 @@ sub param (;$) {
 
 sub escape ($) {
     escape_html(shift());
+}
+
+sub url_escape ($) {
+    CGI::escape(shift());
 }
 
 sub session (;$$) {
