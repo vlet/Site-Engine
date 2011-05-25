@@ -2,6 +2,8 @@ package Site::Engine;
 use strict;
 use warnings;
 use Data::Dumper;
+use Time::HiRes qw( gettimeofday tv_interval );
+my $t0 = [gettimeofday];
 use CGI qw( path_info request_method );
 use Site::Engine::Template;
 use Site::Engine::Session;
@@ -168,6 +170,9 @@ sub start_site ($) {
         $body =~ s/\n\s+/\n/sg;
         header "Status" => 404;
     }
+    header "X-Elapsed-Time" => tv_interval ( $t0 );
+
+    binmode STDOUT, ":utf8";
 
     print join "\n", map { $_ . ": " . $headers{$_} } keys %headers ;
     print "\n\n";

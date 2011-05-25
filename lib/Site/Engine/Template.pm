@@ -143,9 +143,7 @@ sub _var ($$$$) {
     }
     elsif ($attr =~ /^length(\d+)/) {
         my $len = $1;
-        utf8::decode($ret);
         $ret = substr($ret,0,$len)."..." if (length $ret > $len);
-        utf8::encode($ret);
         $ret = escape_html $ret;
     }
     else {
@@ -195,7 +193,7 @@ sub _foreach ($$$$) {
         my $file = $config->{templates} . "/" . $template . ".tt";
         die "Template $template not found" if (! -f $file);
         local $/;
-        open my $fh, "<", $file or die $!;
+        open my $fh, "<:encoding(UTF-8)", $file or die $!;
         my $data = <$fh>;
         close $fh;
         $data =~ s/$for_re/_foreach $1, $2, $3, $vars/eg;
