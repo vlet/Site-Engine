@@ -1,7 +1,6 @@
 package Site::Engine::Template;
 use strict;
 use warnings;
-use utf8;
 use Exporter qw( import );
 our @EXPORT = qw( escape_html clear_html );
 our $VERSION = '0.01';
