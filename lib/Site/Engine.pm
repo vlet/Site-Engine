@@ -5,11 +5,12 @@ use Data::Dumper;
 use Time::HiRes qw( gettimeofday tv_interval );
 my $t0 = [gettimeofday];
 use CGI qw( path_info request_method );
+use Encode;
 use Site::Engine::Template;
 use Site::Engine::Session;
 use Site::Engine::Database;
 use Exporter qw( import );
-our @EXPORT = qw( header get post template start_site param session dump_env redirect config prefix database to_dumper layout escape url_escape );
+our @EXPORT = qw( header get post template start_site param session dump_env redirect config prefix database to_dumper layout escape url_escape upload );
 our $VERSION = '0.01';
 
 # Private
@@ -30,7 +31,11 @@ sub header ($;$) {
 }
 
 sub param (;$) {
-    CGI::param(shift());
+    Encode::decode(utf8=> CGI::param(shift()));
+}
+
+sub upload (;$) {
+    CGI::upload(shift());
 }
 
 sub escape ($) {
