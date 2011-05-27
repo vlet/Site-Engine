@@ -3,7 +3,6 @@ use strict;
 use warnings;
 use Data::Dumper;
 use Time::HiRes qw( gettimeofday tv_interval );
-my $t0 = [gettimeofday];
 use CGI qw( path_info request_method );
 use Encode;
 use Site::Engine::Template;
@@ -126,6 +125,7 @@ sub start_site ($) {
     $session = CGI::cookie("session");
     %headers = ();
     $body = "";
+    my $t0 = [gettimeofday];
 
     Site::Engine::Template::init($config);
     Site::Engine::Session::init($config);
