@@ -9,55 +9,62 @@ use Site::Engine::Template;
 use Site::Engine::Session;
 use Site::Engine::Database;
 use Exporter qw( import );
-our @EXPORT = qw( header get post template start_site param session dump_env redirect config prefix database to_dumper layout escape url_escape upload );
+our @EXPORT =
+  qw( header get post template start_site param session dump_env redirect config prefix database to_dumper layout escape url_escape upload );
 our $VERSION = '0.01';
 
 # Private
 
-my (%headers, $body, @routes, $config, $path_info, $request_method, $session, $addr, $ua, $layout);
+my (
+    %headers,        $body,    @routes, $config, $path_info,
+    $request_method, $session, $addr,   $ua,     $layout
+);
 my $prefix = "";
 
-# Public 
+# Public
 sub header ($;$) {
     my $header = shift;
-    if (defined $_[0]) {
+    if ( defined $_[0] ) {
         $headers{$header} = $_[0];
-    } else {
-        return (exists $headers{$header})?
-            $headers{$header} :
-            undef;
+    }
+    else {
+        return ( exists $headers{$header} )
+          ? $headers{$header}
+          : undef;
     }
 }
 
 sub param (;$) {
-    Encode::decode(utf8=> CGI::param(shift()));
+    Encode::decode( utf8 => CGI::param( shift() ) );
 }
 
 sub upload (;$) {
-    CGI::upload(shift());
+    CGI::upload( shift() );
 }
 
 sub escape ($) {
-    escape_html(shift());
+    escape_html( shift() );
 }
 
 sub url_escape ($) {
-    CGI::escape(shift());
+    CGI::escape( shift() );
 }
 
 sub session (;$$) {
-    if (scalar @_ == 1 && !defined $_[0]) {
-        Site::Engine::Session::destroy_session($session, $addr);
+    if ( scalar @_ == 1 && !defined $_[0] ) {
+        Site::Engine::Session::destroy_session( $session, $addr );
         $session = undef;
     }
     else {
-        my ($id,$ret) = Site::Engine::Session::session($session, $addr, @_);
-        if (! defined $session || $session ne $id) {
+        my ( $id, $ret ) =
+          Site::Engine::Session::session( $session, $addr, @_ );
+        if ( !defined $session || $session ne $id ) {
             header "Set-Cookie" => CGI::cookie(
-                    -name   =>"session",
-                    -value  =>$id,
-                    #-expires=>"+".$config->{session_expires}."s"
-                );
+                -name  => "session",
+                -value => $id,
+
+                #-expires=>"+".$config->{session_expires}."s"
+            );
         }
         return $ret;
     }
@@ -72,40 +79,40 @@ sub layout ($) {
 }
 
 sub get ($$) {
-    my ($route, $sub) = @_;
-    push @routes, ['GET', $prefix, $route, $sub, $layout];
+    my ( $route, $sub ) = @_;
+    push @routes, [ 'GET', $prefix, $route, $sub, $layout ];
 }
 
 sub post ($$) {
-    my ($route, $sub) = @_;
-    push @routes, ['POST', $prefix, $route, $sub, $layout];
+    my ( $route, $sub ) = @_;
+    push @routes, [ 'POST', $prefix, $route, $sub, $layout ];
 }
 
 sub template ($$;$) {
-    if (! exists $_[1]->{prefix} ) {
+    if ( !exists $_[1]->{prefix} ) {
         $_[1]->{prefix} = $prefix;
     }
-    my $conf = (scalar @_ == 3)?pop(@_):{};
-    if (!exists $conf->{layout} && defined $layout) {
+    my $conf = ( scalar @_ == 3 ) ? pop(@_) : {};
+    if ( !exists $conf->{layout} && defined $layout ) {
         $conf->{layout} = $layout;
     }
-    Site::Engine::Template::template(@_, $conf);
+    Site::Engine::Template::template( @_, $conf );
 }
 
 sub dump_env {
-    return join "", Dumper(\$config, \%ENV);
+    return join "", Dumper( \$config, \%ENV );
 }
 
 sub redirect ($) {
     my $location = shift;
-    $location = $prefix.$location if ($location !~ m'^\w+://');
-    header "Status" => 303;
+    $location = $prefix . $location if ( $location !~ m'^\w+://' );
+    header "Status"   => 303;
     header "Location" => $location;
     "";
 }
 
 sub config {
-    $config
+    $config;
 }
 
 sub database {
@@ -113,18 +120,18 @@ sub database {
 }
 
 sub to_dumper {
-    Dumper(shift());
+    Dumper( shift() );
 }
 
 sub start_site ($) {
-    $config = shift;
-    $path_info = path_info();
+    $config         = shift;
+    $path_info      = path_info();
     $request_method = request_method();
-    $addr = $ENV{"REMOTE_ADDR"};
-    $ua   = $ENV{"HTTP_USER_AGENT"};
-    $session = CGI::cookie("session");
-    %headers = ();
-    $body = "";
+    $addr           = $ENV{"REMOTE_ADDR"};
+    $ua             = $ENV{"HTTP_USER_AGENT"};
+    $session        = CGI::cookie("session");
+    %headers        = ();
+    $body           = "";
     my $t0 = [gettimeofday];
 
     Site::Engine::Template::init($config);
@@ -134,18 +141,18 @@ sub start_site ($) {
     header "Content-Type" => "text/html";
 
     foreach my $route (@routes) {
-        if ($request_method eq $route->[0] && $path_info =~ /^$route->[1]$route->[2]$/ ) {
-            my @matches = ($path_info =~ /^$route->[1]$route->[2]$/);
+        if (   $request_method eq $route->[0]
+            && $path_info =~ /^$route->[1]$route->[2]$/ )
+        {
+            my @matches = ( $path_info =~ /^$route->[1]$route->[2]$/ );
             $prefix = $route->[1];
             $layout = $route->[4];
-            eval {
-                $body = $route->[3]->(@matches);
-            };
+            eval { $body = $route->[3]->(@matches); };
             if ($@) {
                 my $err = "";
-                if ($config->{debug}) {
+                if ( $config->{debug} ) {
                     $err = escape_html($@);
-                } 
+                }
                 $body = qq{
                     <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
                     <html><head>
@@ -162,7 +169,7 @@ sub start_site ($) {
             last;
         }
     }
-    if (!$body && !header("Status")) {
+    if ( !$body && !header("Status") ) {
         $body = qq{
             <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
             <html><head>
@@ -175,11 +182,11 @@ sub start_site ($) {
         $body =~ s/\n\s+/\n/sg;
         header "Status" => 404;
     }
-    header "X-Elapsed-Time" => tv_interval ( $t0 );
+    header "X-Elapsed-Time" => tv_interval($t0);
 
     binmode STDOUT, ":utf8";
 
-    print join "\n", map { $_ . ": " . $headers{$_} } keys %headers ;
+    print join "\n", map { $_ . ": " . $headers{$_} } keys %headers;
     print "\n\n";
     print $body;
 }
