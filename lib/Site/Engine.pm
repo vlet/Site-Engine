@@ -131,7 +131,6 @@ sub start_site ($) {
     $ua             = $ENV{"HTTP_USER_AGENT"};
     $session        = CGI::cookie("session");
     %headers        = ();
-    $body           = "";
     my $t0 = [gettimeofday];
 
     Site::Engine::Template::init($config);
@@ -169,7 +168,7 @@ sub start_site ($) {
             last;
         }
     }
-    if ( !$body && !header("Status") ) {
+    if ( !defined $body  ) {
         $body = qq{
             <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
             <html><head>
@@ -217,7 +216,7 @@ doesn't provide support for modern PSGI-based WF like Dancer or Mojolicious
         "templates" => "/path/to/templates/dir";
         "db" => {
            "type"   => "mysql",
-           "db"     => "db"
+           "db"     => "db",
            "dbuser" => "dbuser",
            "dbpass" => "dbpass",
         },
