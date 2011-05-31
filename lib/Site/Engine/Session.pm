@@ -128,7 +128,9 @@ Site::Engine::Sesion - Session handling
 
 =head1 METHODS
 
-=head2 init ( \%config ) - init module with configuration
+=head2 init( \%config )
+
+init module with configuration
 
 =over
 
@@ -149,6 +151,16 @@ Site::Engine::Sesion - Session handling
 =item $key   - get/set some attribute of current session (if undefined - return ref to hash with all values)
 
 =item $value - set attribute $key with specified $value (if undefined - function is getter)
+
+=back
+
+=head2 destroy_session( $id, $addr ) - destroy session with $id and $addr
+
+=over
+
+=item $id    - id (16 random symbols \w) of current session or undef (to create new session)
+
+=item $addr  - ip-address of client (REMOTE_ADDR)
 
 =back
 

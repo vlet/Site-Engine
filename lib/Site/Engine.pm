@@ -197,12 +197,13 @@ __END__
 
 =head1 NAME
 
-Site::Engine - Ugly CGI-based web-framework with templates, sessions and databases support
+Site::Engine - Ugly tiny CGI-based web-framework with templates, sessions and databases.
 
 =head1 DESCRIPTION
 
 This is simple CGI-based web-framework. Use this only if your hosting has plain perl and
-doesn't provide support for modern PSGI-based WF like Dancer or Mojolicious
+Apache with mod_cgi/mod_rewrite and doesn't provide support for modern PSGI-based WF
+like Dancer or Mojolicious
 
 =head1 SYNOPSIS
 
@@ -228,7 +229,7 @@ doesn't provide support for modern PSGI-based WF like Dancer or Mojolicious
         template 'index', {
             data => "hello world!"
         }, { layout => 'main' }
-    }
+    };
 
     post qr{/login} => sub {
         my $user = param('user');
@@ -239,7 +240,11 @@ doesn't provide support for modern PSGI-based WF like Dancer or Mojolicious
         } else {
             redirect '/?error=badpass'
         }
-    }
+    };
+
+    get qr{/(\w+)} {
+        my $match = shift;
+    };
 
     # Start engine
 
@@ -247,10 +252,104 @@ doesn't provide support for modern PSGI-based WF like Dancer or Mojolicious
 
 =head1 METHODS
 
-=head2 start_site \%config - start processing request
+=head2 start_site \%config
 
-...
- 
+start processing request
+
+=head2 header $header [, $value]
+
+get/set header
+
+=head2 param $param
+
+alias of CGI::param (return utf-8 encoded string)
+
+=head2 upload $file
+
+alias of CGI::upload (return byte string)
+
+=head2 escape $string
+
+escape html symbols in string
+
+=head2 url_escape $url
+
+alias of CGI::escape()
+
+=head2 session [ $key [, $value] ]
+
+get/set session key
+
+To destroy session:
+
+    session undef;
+
+=head2 prefix $prefix
+
+Set prefix for routes
+
+    prefix "/admin";
+
+    get qr{/login} => sub { # Match /admin/login
+    }
+
+=head2 layout $layout
+
+Set default layout for routes
+
+=head2 get
+
+Defines a route for HTTP GET requests to the given path:
+
+    get qr{/} => sub {
+        "Hello, world!"
+    };
+
+    All matches in regexp will be availiable via @_
+
+    get qr{/name/(\w+)} => sub {
+        my $name = shift;
+    };
+
+=head2 post
+
+Defines a route for HTTP POST requests to the given path:
+
+    post qr{/login} => sub {
+        my $login = param("login");
+        my $pass  = param("pass");
+    }
+
+=head2 template
+
+Build page with specified template
+
+    template 'name_of_template_file', {
+        var => "value",
+        array => [ "some", "array" ],
+        hash => { "this" => "that" },
+    }, { layout => 'layout_template' };
+
+=head2 dump_env
+
+return Data::Dumper for $config and \%ENV
+
+=head2 redirect
+
+return 303 redirect to URL (if prefix is set, than $prefix+$URL)
+
+=head2 config
+
+return ref to config hash
+
+=head2 database
+
+return database handle (dbh)
+
+=head2 to_dumper
+
+alias of Data::Dumper()
+
 =head1 COPYRIGHT AND LICENSE
 
 Copyright 2011 by crux E<lt>thecrux@gmail.comE<gt>

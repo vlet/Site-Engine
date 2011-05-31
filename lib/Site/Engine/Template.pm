@@ -217,11 +217,124 @@ __END__
 
 Site::Engine::Template - simple TT's like template engine
 
-=head1 METHODS
-
 =head1 DESCRIPTION
 
 This module provide simple support for templates.
+
+=head1 METHODS
+
+=head2 init( \%config )
+
+init module with configuration
+
+=head2 escape_html( $html )
+
+escape html symbols
+
+=head2 clear_html( $html )
+
+try to convert html to plain text (remove tags and html entities)
+
+=head2 template( $template, $vars, $conf )
+
+create page from $template file with $vars and $conf
+
+=over
+
+=item $template - name of file (without extension .tt)
+
+=item $vars - ref to hash with values
+
+=item $conf - ref to hash with configuration ( for example layout )
+
+=back
+
+=head1 EXAMPLE
+
+    template 'name_of_template_file', {
+        data => "some data",
+        array => [ "first" , "second" ],
+        hash  => {
+            this => "that",
+        },
+    }, { layout => 'name_of_template_of_layout' };
+
+    Templates dir is fetched from config (key 'templates'), templates default extension is .tt
+
+=head1 SYNTAX
+
+=head2 [% var %] - substitute variable
+
+=over
+
+=item [% var %]      - SCALAR
+
+=item [% var.4 %]    - ARRAY ( 4th element of array var )
+
+=item [% var.prop %] - HASH  ( value of key 'prop' of hash var )
+
+=back
+
+=over
+
+=item [% var %] - by default value is escaped ( by escape_html() )
+
+=item [% var | raw %] - show variable as is ( no escaping )
+
+=item [% var | clear %] - clear html (remove all tags and enities)
+
+=item [% var | clear_para %] - clear html and return only first paragraph of text
+
+=item [% var | lengthXX %] - return only first XX symbols (escaped)
+
+=back
+
+=head2 [% IF condition %] some data [% FI %] - condition for inserting data. Doesn't support nesting!!!
+
+=over
+
+=item [% IF var %] - check that var is true (not 0, not empty string, not undef)
+
+=item [% IF !var %] - check that var is false
+
+=item [% IF var==1 %] - check if condition var == number is true
+
+=item [% IF var1==var2 %] - check if condition var1 == var2 is true
+
+=back
+
+=head2 [% SET var="string" %] - set var with value of "string"
+
+=head2 [% INCLUDE var %] - include another template
+
+=over
+
+=item [% INCLUDE var %] - include template with name from variable var
+
+=item [% INCLUDE "string" %] - include template with name "string"
+
+=back
+
+=head2 [% FOREACH element IN array %] ... [% END %] - foreach cycle.
+
+    Doesn't support nesting!!!
+
+=head1 BUGS and WORKAROUNDS
+
+FOREACH and IF doesn't support nesting, but you can use INCLUDE
+
+
+    Wrong !!!!                              Correct
+
+    [%IF condition1 %]              |       [%IF condition1 %]
+        data1                       |           data1
+        [% IF confition2 %]         |           [% INCLUDE "template_with_confition2" %]
+            data2                   |       [% FI %]
+        [% FI %]                    |
+    [% FI %]                        |       In file template_with_confition2.tt:
+                                    |       [% IF confition2 %]
+                                    |            data2
+                                    |       [% FI %]
 
 =head1 COPYRIGHT AND LICENSE
 

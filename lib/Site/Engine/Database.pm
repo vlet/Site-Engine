@@ -55,11 +55,35 @@ __END__
 
 Site::Engine::Database - simple support for SQL databases
 
-=head1 METHODS
-
 =head1 DESCRIPTION
 
 This module provide simple database support for MySQL and SQLite
+
+    # MySQL
+    my %config = (
+        ...
+        "db" => {
+           "type"   => "mysql",
+           "db"     => "db",
+           "dbhost" => "mysql.server",  # optional
+           "dbport" => 3306,            # optional
+           "dbuser" => "dbuser",
+           "dbpass" => "dbpass",
+        },
+        ...
+    );
+
+    # SQLite
+    my %config = (
+        ...
+        "db" => {
+           "type"   => "sqlite",
+           "db_file"=> "/path/to/sqlite.db",
+           "dbuser" => "",
+           "dbpass" => "",
+        },
+        ...
+    );
 
 =head1 COPYRIGHT AND LICENSE
 
