@@ -1,0 +1,77 @@
+Site-Engine
+===========
+
+Site::Engine - Ugly tiny CGI-based web-framework with templates, sessions and
+               databases.
+
+This is simple CGI-based web-framework. It's syntax looks like Dancer
+(http://perldancer.org). Use this only if your hosting has plain perl
+and Apache with mod_cgi/mod_rewrite and doesn't provide support for
+modern PSGI-based WF like Dancer or Mojolicious. Also, it will be easy
+to migrate your code later to Dancer if needed.
+
+INSTALLATION
+
+To install this module type the following:
+
+   perl Makefile.PL
+   make
+   make test
+   make install
+
+DEPENDENCIES
+
+This module requires these other modules and libraries:
+
+  CGI.pm
+
+EXAMPLE
+
+    #!/usr/bin/perl
+    #
+    # app.pl
+    #
+    use strict;
+    use warnings;
+    use Site::Engine;
+
+    # Configuration of site
+    my %config = (
+        "templates" => "/path/to/templates/dir",
+    );
+
+    # Routes
+    get qr{/} => sub {
+        template 'index', {
+            data => "hello world!"
+        }, { layout => 'main' }
+    };
+
+    start_site \%config;
+
+DEPLOYMENT
+
+Sample apache 1/2 config
+
+<VirtualHost *>
+    ServerName example.com
+    DocumentRoot /srv/example.com
+    <Directory /srv/example.com>
+        Options ExecCGI +SymLinksIfOwnerMatch
+        AddHandler cgi-script .pl
+        RewriteEngine On
+        RewriteBase /
+        RewriteCond %{REQUEST_URI} !\.(js|css|png|jpg|gif)$
+        RewriteCond %{REQUEST_URI} !\/app(\.pl)*\/
+        RewriteRule ^(.*)$ /app.pl/$1 [L]
+        ErrorDocument 404 /app.pl/404
+    </Directory>
+</VirtualHost>
+
+COPYRIGHT AND LICENCE
+
+Copyright (C) 2011 by crux <thecrux@gmail.com>
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.12.3 or,
+at your option, any later version of Perl 5 you may have available.
